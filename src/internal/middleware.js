@@ -43,19 +43,30 @@ export default function sagaMiddlewareFactory({ context = {}, ...options } = {})
   }
 
   function sagaMiddleware({ getState, dispatch }) {
+    // 一个事件订阅和发射器。 {subscribe, emmit}
     const sagaEmitter = emitter()
+    // 重写sagaEmitter方法，将sagaEmitter.emmit作为方法参数，传到options.emitter方法里面
+    // 生成一个接受action方法的方法，这个方法内部可以获原来的sagaEmitter.emitter方法
+    // 并用于处理后来的action.
     sagaEmitter.emit = (options.emitter || ident)(sagaEmitter.emit)
 
+  // 为runSaga方法绑定了参数
+  // sagaMiddleware.run 现在为runSaga方法。
     sagaMiddleware.run = runSaga.bind(null, {
       context,
       subscribe: sagaEmitter.subscribe,
+      // redux里面的dispatch方法被放到参数里面。
       dispatch,
+      // redux里面的getState方法。
       getState,
       sagaMonitor,
       logger,
       onError,
     })
-
+    // 返回一个方法接受next参数, 该方法返回一个方法，接受action参数。
+    // 调用sagaMonitor.actionDispatched去处理action，
+    // 带哦用next参数方法去处理action,
+    // 调用sagaEmitter的emmit方法去处理action,
     return next => action => {
       if (sagaMonitor && sagaMonitor.actionDispatched) {
         sagaMonitor.actionDispatched(action)
@@ -66,6 +77,7 @@ export default function sagaMiddlewareFactory({ context = {}, ...options } = {})
     }
   }
 
+  // mount Saga前的提示.
   sagaMiddleware.run = () => {
     throw new Error('Before running a Saga, you must mount the Saga middleware on the Store using applyMiddleware')
   }

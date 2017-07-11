@@ -14,6 +14,7 @@ import {
   SELF_CANCELLATION,
   makeIterator,
   createSetContextWarning,
+  // 接受function，和一个提示语作为参数，process.env.NODE_ENV === production时触发提示。
   deprecate,
   updateIncentive,
 } from './utils'
@@ -125,7 +126,9 @@ function forkQueue(name, mainTask, cb) {
   }
 }
 
+// 这个方法返回了一个iterator对象。
 function createTaskIterator({ context, fn, args }) {
+  // fn是一个iterator则直接返回方法。
   if (is.iterator(fn)) {
     return fn
   }
@@ -133,6 +136,7 @@ function createTaskIterator({ context, fn, args }) {
   // catch synchronous failures; see #152 and #441
   let result, error
   try {
+    // 应用fn,得到result
     result = fn.apply(context, args)
   } catch (err) {
     error = err
@@ -149,11 +153,13 @@ function createTaskIterator({ context, fn, args }) {
     ? makeIterator(() => {
         throw error
       })
+      // 构造一个iterator对象。
     : makeIterator(
         (function() {
           let pc
           const eff = { done: false, value: result }
           const ret = value => ({ done: true, value })
+          // 这个生成的函数作为iterator对象的next方法。
           return arg => {
             if (!pc) {
               pc = true
@@ -166,6 +172,7 @@ function createTaskIterator({ context, fn, args }) {
       )
 }
 
+// 接受一个helper参数，范围一个对象。
 const wrapHelper = helper => ({ fn: helper })
 
 export default function proc(
@@ -182,6 +189,7 @@ export default function proc(
   check(iterator, is.iterator, NOT_ITERATOR_ERROR)
 
   const effectsString = '[...effects]'
+  // 返回一个方法，接受若干参数，用runAllEffect来处理这些参数。
   const runParallelEffect = deprecate(runAllEffect, updateIncentive(effectsString, `all(${effectsString})`))
 
   const { sagaMonitor, logger, onError } = options
@@ -338,7 +346,9 @@ export default function proc(
   }
 
   function runEffect(effect, parentEffectId, label = '', cb) {
+    // 返回了一个id
     const effectId = nextEffectId()
+    // sagaMonitor已经从上面的options取了出来，时runSaga方法接受的参数
     sagaMonitor && sagaMonitor.effectTriggered({ effectId, parentEffectId, label, effect })
 
     /**
@@ -350,20 +360,25 @@ export default function proc(
 
     // Completion callback passed to the appropriate effect runner
     function currCb(res, isErr) {
+      // effectSettled，effect完成了，则return
       if (effectSettled) {
         return
       }
-
+      // effectSettled设为true
       effectSettled = true
+      // 为cb田间一个canel方法。
       cb.cancel = noop // defensive measure
+      // 判断sagaMonitor是否存在。
       if (sagaMonitor) {
         isErr ? sagaMonitor.effectRejected(effectId, res) : sagaMonitor.effectResolved(effectId, res)
       }
+      // 用callback去吃力res, 和isErr参数。
       cb(res, isErr)
     }
     // tracks down the current cancel
+    // 为自己添加一个cancle方法
     currCb.cancel = noop
-
+    // 为cb添加一个cancel方法。
     // setup cancellation logic on the parent cb
     cb.cancel = () => {
       // prevents cancelling an already completed effect
@@ -431,9 +446,11 @@ export default function proc(
     )
   }
 
+  // effce和currCb作为参数传了进去。
   function resolvePromise(promise, cb) {
     const cancelPromise = promise[CANCEL]
     if (is.func(cancelPromise)) {
+      // 检测cancelPromise是否存在，存在则作为cancel方法传给cb
       cb.cancel = cancelPromise
     } else if (is.func(promise.abort)) {
       cb.cancel = () => promise.abort()
@@ -513,6 +530,7 @@ export default function proc(
   }
 
   function runForkEffect({ context, fn, args, detached }, effectId, cb) {
+    // 得到一个iterator对象。
     const taskIterator = createTaskIterator({ context, fn, args })
 
     try {
@@ -568,6 +586,7 @@ export default function proc(
     // cancel effects are non cancellables
   }
 
+  // effects,effectId,callback作为参数。
   function runAllEffect(effects, effectId, cb) {
     const keys = Object.keys(effects)
 
@@ -580,38 +599,51 @@ export default function proc(
     const results = {}
     const childCbs = {}
 
+    // 用于判断是否所有effects都完成了。
     function checkEffectEnd() {
       if (completedCount === keys.length) {
         completed = true
+        // 完成则调用回调函数。
         cb(is.array(effects) ? array.from({ ...results, length: keys.length }) : results)
       }
     }
 
     keys.forEach(key => {
+      // 定义已方法，接受res，和isErr参数。childCallbackAtKey
       const chCbAtKey = (res, isErr) => {
+        // 已完成则return
         if (completed) {
           return
         }
+        // 判断res是否而err,end,cancel或者CHANNEL_END状态。
         if (isErr || isEnd(res) || res === CHANNEL_END || res === TASK_CANCEL) {
+          // 调用cb.cancel
           cb.cancel()
+          // 用cb去处理re,isErr
           cb(res, isErr)
         } else {
+          // 将处理结果放在results里面。
           results[key] = res
           completedCount++
+          // 检测effects是否都完成了。
           checkEffectEnd()
         }
       }
+      // 添加一个cancel占位方法。
       chCbAtKey.cancel = noop
+      // 将方法根据key值，存放到childCbs里面。
       childCbs[key] = chCbAtKey
     })
-
+    // 为cb添加一个cancel方法。
     cb.cancel = () => {
       if (!completed) {
         completed = true
+        // 完成了，则调用每个childCbs[key]的cancel方法。
         keys.forEach(key => childCbs[key].cancel())
       }
     }
 
+    // 感觉每个Key值，调用一次runEffect离处理相应的effect,effectId,key,childCbs[key]
     keys.forEach(key => runEffect(effects[key], effectId, key, childCbs[key]))
   }
 

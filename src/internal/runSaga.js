@@ -25,15 +25,20 @@ export function runSaga(storeInterface, saga, ...args) {
 
   if (sagaMonitor) {
     // monitors are expected to have a certain interface, let's fill-in any missing ones
+    // {effectId, parentEffectId, label, effect}作用参数
     sagaMonitor.effectTriggered = sagaMonitor.effectTriggered || noop
+    //{effectId, result} result就是task
     sagaMonitor.effectResolved = sagaMonitor.effectResolved || noop
+    // effectId, error
     sagaMonitor.effectRejected = sagaMonitor.effectRejected || noop
+    // effectId
     sagaMonitor.effectCancelled = sagaMonitor.effectCancelled || noop
+    // action
     sagaMonitor.actionDispatched = sagaMonitor.actionDispatched || noop
 
     sagaMonitor.effectTriggered({ effectId, root: true, parentEffectId: 0, effect: { root: true, saga, args } })
   }
-
+  // 用process方法去处理iterator等参数，返回一个task对象。
   const task = proc(
     iterator,
     subscribe,
@@ -42,6 +47,7 @@ export function runSaga(storeInterface, saga, ...args) {
     context,
     { sagaMonitor, logger, onError },
     effectId,
+    // 方法名字.
     saga.name,
   )
 

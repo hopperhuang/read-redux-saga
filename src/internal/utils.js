@@ -11,7 +11,7 @@ export const kTrue = konst(true)
 export const kFalse = konst(false)
 export const noop = () => {}
 export const ident = v => v
-
+// 用predicate检测value值是否符合预期。
 export function check(value, predicate, error) {
   if (!predicate(value)) {
     log('error', 'uncaught at check', error)
@@ -24,6 +24,7 @@ export function hasOwn(object, property) {
   return is.notUndef(object) && hasOwnProperty.call(object, property)
 }
 
+// 判断是否为特定的对象。
 export const is = {
   undef: v => v === null || v === undefined,
   notUndef: v => v !== null && v !== undefined,

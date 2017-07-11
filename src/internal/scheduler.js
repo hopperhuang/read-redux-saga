@@ -6,6 +6,7 @@ const queue = []
   - Decrementing releases a lock. Zero locks puts the scheduler in a `released` state. This
     triggers flushing the queued tasks.
 **/
+// 信号量。
 let semaphore = 0
 
 /**
