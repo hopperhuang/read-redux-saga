@@ -73,6 +73,7 @@ export default function sagaMiddlewareFactory({ context = {}, ...options } = {})
       }
       const result = next(action) // hit reducers
       sagaEmitter.emit(action)
+      // 返回一个action被下一个middleware调用
       return result
     }
   }

@@ -5,6 +5,19 @@ const RUN_SAGA_SIGNATURE = 'runSaga(storeInterface, saga, ...args)'
 const NON_GENERATOR_ERR = `${RUN_SAGA_SIGNATURE}: saga argument must be a Generator function!`
 
 export function runSaga(storeInterface, saga, ...args) {
+  // storeInterface:
+  // sagaMiddleware.run = runSaga.bind ....
+  // {
+  //   context,
+  //   subscribe: sagaEmitter.subscribe,
+  //   // redux里面的dispatch方法被放到参数里面。
+  //   dispatch,
+  //   // redux里面的getState方法。
+  //   getState,
+  //   sagaMonitor,
+  //   logger,
+  //   onError,
+  // }
   let iterator
 
   if (is.iterator(storeInterface)) {

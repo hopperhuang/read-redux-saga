@@ -6,14 +6,16 @@ const CHANNEL_END_TYPE = '@@redux-saga/CHANNEL_END'
 export const END = { type: CHANNEL_END_TYPE }
 export const isEnd = a => a && a.type === CHANNEL_END_TYPE
 
+// 这里是一个emitter，被sagaMiddlewareFactory调用了，用于创建sagaEmitter,发射信号给effect去处理。
 export function emitter() {
   const subscribers = []
-
+  // 闭包,subscribe方法处理得sub读被Push到subscribers
   function subscribe(sub) {
     subscribers.push(sub)
     return () => remove(subscribers, sub)
   }
 
+  // 调用subscribers遍历处理信号。
   function emit(item) {
     const arr = subscribers.slice()
     for (var i = 0, len = arr.length; i < len; i++) {
@@ -140,6 +142,28 @@ export function eventChannel(subscribe, buffer = buffers.none(), matcher) {
       chan.close()
     }
   }
+
+  //  stdChannel : subscribe ---> cb =>
+  //  // 里面得subscribe是sagaEmitter得subscribe。
+    // subscribe(input => {
+    //   if (input[SAGA_ACTION]) {
+    //     cb(input)
+    //     return
+    //   }
+    //   asap(() => cb(input))
+    // })
+
+    // cb ---> input => {
+    //   if (isEnd(input)) {
+    //     close()
+    //     return
+    //   }
+    //   if (matcher && !matcher(input)) {
+    //     return
+    //   }
+    //   chan.put(input)
+    // })
+
   const unsubscribe = subscribe(input => {
     if (isEnd(input)) {
       close()

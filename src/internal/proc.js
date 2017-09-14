@@ -257,6 +257,7 @@ export default function proc(
   next()
 
   // then return the task descriptor to the caller
+  // 返回一个task对象
   return task
 
   /**
@@ -300,12 +301,14 @@ export default function proc(
       }
 
       if (!result.done) {
+        //result.value 应该是一个func
         runEffect(result.value, parentEffectId, '', next)
       } else {
         /**
           This Generator has ended, terminate the main task and notify the fork queue
         **/
         mainTask.isMainRunning = false
+        // 如果done是ture ,调用mainTask.cont --> 因为经过forkQueue方法处理，所以会调用end --> end方法更会调用task.cont --> task.cont一般为上级得执行器。
         mainTask.cont && mainTask.cont(result.value)
       }
     } catch (error) {
@@ -461,6 +464,7 @@ export default function proc(
   }
 
   function resolveIterator(iterator, effectId, name, cb) {
+    // 新开一个协程，并把上级执行器作为参数交给这个携程去调用。
     proc(iterator, subscribe, dispatch, getState, taskContext, options, effectId, name, cb)
   }
 
@@ -528,7 +532,7 @@ export default function proc(
       return cb(error, true)
     }
   }
-
+  // 新开一协助程序
   function runForkEffect({ context, fn, args, detached }, effectId, cb) {
     // 得到一个iterator对象。
     const taskIterator = createTaskIterator({ context, fn, args })
